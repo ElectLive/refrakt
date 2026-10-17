@@ -20,7 +20,11 @@ Set these in production:
 |----------|----------|---------|-------------|
 | `PORT` | No | `4000` | HTTP port |
 | `SECRET_KEY_BASE` | **Yes** | dev fallback | Cookie signing key (64+ chars) |
-| `APP_ENV` | No | `dev` | `dev`, `test`, or `prod` |
+| `APP_ENV` | **Yes** (set to `prod`) | `dev` | `dev`, `test`, or `prod` |
+
+Leaving `APP_ENV` unset means `dev`, which shows the detailed error page
+(error, stack trace, request headers) to anyone who triggers a crash.
+Always set `APP_ENV=prod` in production; crashes then return a plain 500.
 
 ### Generate a secret key
 
@@ -125,7 +129,7 @@ sqlite3 /path/to/my_app.db < src/my_app/data/migrations/001_create_posts.sql
 ## Production checklist
 
 - [ ] `SECRET_KEY_BASE` set to a random 64+ character string
-- [ ] `APP_ENV=prod` set
+- [ ] `APP_ENV=prod` set (otherwise crashes show the dev error page)
 - [ ] Database migrations run
 - [ ] Static assets accessible at `/static/`
 - [ ] Health check endpoint (add `GET /health` route)

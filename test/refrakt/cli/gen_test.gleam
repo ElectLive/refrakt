@@ -89,6 +89,27 @@ pub fn new_with_sqlite_creates_repo_test() {
   })
 }
 
+pub fn new_router_shows_dev_error_page_only_in_dev_test() {
+  in_temp_dir("new_router_env", fn(dir) {
+    let project_dir = dir <> "/env_app"
+    new.run(project_dir, [])
+
+    let assert Ok(router) =
+      simplifile.read(project_dir <> "/src/env_app/router.gleam")
+
+    // The rich error page is chosen by environment, never unconditionally
+    string.contains(router, "use <- dev_error.rescue(req)") |> should.be_false
+    string.contains(router, "use <- rescue_crashes(req, ctx)") |> should.be_true
+    string.contains(router, "config.Dev -> dev_error.rescue(req, next)")
+    |> should.be_true
+    string.contains(
+      router,
+      "config.Test | config.Prod -> wisp.rescue_crashes(next)",
+    )
+    |> should.be_true
+  })
+}
+
 pub fn new_extracts_name_from_path_test() {
   in_temp_dir("new_path", fn(dir) {
     let project_dir = dir <> "/nested/deep/cool_app"
