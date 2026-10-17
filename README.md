@@ -1,7 +1,10 @@
 <div align="center">
 
 <h1 align="center">
-  Refrakt
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-wordmark-dark.svg">
+    <img alt="Refrakt" src="assets/logo-wordmark.svg" width="320">
+  </picture>
 </h1>
 
 <p align="center">
