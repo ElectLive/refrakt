@@ -259,6 +259,9 @@ pub fn auth() {
   }
 }
 
+/// The argus (Argon2) version range `gen auth` adds to gleam.toml.
+const argus_requirement = ">= 2.0.0 and < 3.0.0"
+
 fn auth_with_db(db: DbChoice) {
   let app = project.app_name()
 
@@ -301,6 +304,9 @@ fn auth_with_db(db: DbChoice) {
     let assert Ok(_) = simplifile.write(path, content)
   })
 
+  // Passwords are hashed with Argon2 from the argus package
+  let added_argus = project.add_dependency("argus", argus_requirement)
+
   // Patch router and format
   let _ = patch_router_auth(app)
   let router_path = "src/" <> app <> "/router.gleam"
@@ -319,9 +325,10 @@ fn auth_with_db(db: DbChoice) {
   io.println("")
   io.println("Updated:")
   io.println("  src/" <> app <> "/router.gleam")
-  io.println("")
-  io.println("Note: You need a password hashing library. Add one with:")
-  io.println("  gleam add beecrypt")
+  case added_argus {
+    True -> io.println("  gleam.toml (added argus for Argon2 password hashing)")
+    False -> Nil
+  }
 }
 
 // =============================================================================
@@ -1919,21 +1926,25 @@ fn auth_user_type() -> String {
 }
 
 fn auth_domain(_app: String) -> String {
-  "import gleam/crypto
-import gleam/bit_array
-import gleam/string
+  "import argus
+import gleam/result
 
-/// Hash a password using a simple HMAC-based approach.
-/// Replace with a proper bcrypt/argon2 library for production.
-pub fn hash_password(password: String) -> String {
-  crypto.hash(crypto.Sha256, bit_array.from_string(password))
-  |> bit_array.base16_encode
-  |> string.lowercase
+/// Hash a password with Argon2id, using a fresh random salt and the
+/// OWASP-recommended cost settings. The result is a self-describing
+/// string (`$argon2id$...`) holding the salt and parameters, so it
+/// can be stored as-is and checked later with `verify_password`.
+pub fn hash_password(password: String) -> Result(String, Nil) {
+  argus.hasher()
+  |> argus.hash(password)
+  |> result.map(fn(output) { output.encoded_hash })
+  |> result.replace_error(Nil)
 }
 
-/// Verify a password against a hash.
+/// Check a password against a hash from `hash_password`. The comparison
+/// is constant-time; a malformed hash never matches.
 pub fn verify_password(password: String, hash: String) -> Bool {
-  hash_password(password) == hash
+  argus.verify(hash, password)
+  |> result.unwrap(False)
 }
 "
 }
@@ -2190,6 +2201,7 @@ fn get_value(data: wisp.FormData, key: String) -> String {
 fn auth_handler(app: String, db: DbChoice) -> String {
   let db_arg = auth_db_arg(db)
   "import gleam/int
+import gleam/result
 import " <> app <> "/context.{type Context}
 import " <> app <> "/data/user_repo
 import " <> app <> "/domain/auth
@@ -2259,8 +2271,11 @@ pub fn register(req: Request, ctx: Context) -> Response {
       |> wisp.html_response(422)
 
     Ok(params) -> {
-      let hashed = auth.hash_password(params.password)
-      case user_repo.create(" <> db_arg <> ", params.email, hashed) {
+      let created = {
+        use hashed <- result.try(auth.hash_password(params.password))
+        user_repo.create(" <> db_arg <> ", params.email, hashed)
+      }
+      case created {
         Ok(user) ->
           wisp.redirect(\"/\")
           |> wisp.set_cookie(
@@ -2395,18 +2410,37 @@ pub fn require_auth(
 }
 
 fn auth_test(app: String) -> String {
-  "import gleeunit/should
+  "import gleam/string
+import gleeunit/should
 import " <> app <> "/domain/auth
 
-pub fn hash_password_test() {
-  let hash = auth.hash_password(\"secret123\")
+pub fn hash_password_round_trip_test() {
+  let assert Ok(hash) = auth.hash_password(\"secret123\")
   auth.verify_password(\"secret123\", hash)
   |> should.be_true
 }
 
 pub fn wrong_password_test() {
-  let hash = auth.hash_password(\"secret123\")
+  let assert Ok(hash) = auth.hash_password(\"secret123\")
   auth.verify_password(\"wrong\", hash)
+  |> should.be_false
+}
+
+pub fn hash_uses_argon2id_test() {
+  let assert Ok(hash) = auth.hash_password(\"secret123\")
+  string.starts_with(hash, \"$argon2id$\")
+  |> should.be_true
+}
+
+pub fn hashes_are_salted_test() {
+  let assert Ok(first) = auth.hash_password(\"secret123\")
+  let assert Ok(second) = auth.hash_password(\"secret123\")
+  first
+  |> should.not_equal(second)
+}
+
+pub fn malformed_hash_never_matches_test() {
+  auth.verify_password(\"secret123\", \"not-a-hash\")
   |> should.be_false
 }
 "

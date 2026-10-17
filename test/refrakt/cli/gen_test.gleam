@@ -8,6 +8,8 @@ import gleam/string
 import gleeunit/should
 import refrakt/cli/gen
 import refrakt/cli/new
+import refrakt/cli/project
+import refrakt/cli/types
 import simplifile
 
 // =============================================================================
@@ -85,6 +87,27 @@ pub fn new_with_sqlite_creates_repo_test() {
     file_exists(project_dir <> "/src/sq_app/data/repo.gleam") |> should.be_true
     file_contains(project_dir <> "/gleam.toml", "sqlight") |> should.be_true
     file_contains(project_dir <> "/src/sq_app/context.gleam", "db_path: String")
+    |> should.be_true
+  })
+}
+
+pub fn new_router_shows_dev_error_page_only_in_dev_test() {
+  in_temp_dir("new_router_env", fn(dir) {
+    let project_dir = dir <> "/env_app"
+    new.run(project_dir, [])
+
+    let assert Ok(router) =
+      simplifile.read(project_dir <> "/src/env_app/router.gleam")
+
+    // The rich error page is chosen by environment, never unconditionally
+    string.contains(router, "use <- dev_error.rescue(req)") |> should.be_false
+    string.contains(router, "use <- rescue_crashes(req, ctx)") |> should.be_true
+    string.contains(router, "config.Dev -> dev_error.rescue(req, next)")
+    |> should.be_true
+    string.contains(
+      router,
+      "config.Test | config.Prod -> wisp.rescue_crashes(next)",
+    )
     |> should.be_true
   })
 }
@@ -246,6 +269,15 @@ pub fn gen_auth_creates_all_files_test() {
     )
     |> should.be_true
 
+    // Passwords are hashed with Argon2 via argus, never plain SHA-256
+    let domain = "src/auth_app/domain/auth.gleam"
+    file_contains(domain, "import argus") |> should.be_true
+    file_contains(domain, "crypto") |> should.be_false
+    file_contains(domain, "pub fn hash_password(password: String) -> Result(")
+    |> should.be_true
+    file_contains("gleam.toml", "argus = \">= 2.0.0 and < 3.0.0\"")
+    |> should.be_true
+
     let assert Ok(_) = set_cwd(cwd)
     Nil
   })
@@ -281,6 +313,36 @@ pub fn gen_auth_sqlite_generates_sqlite_code_test() {
   })
 }
 
+pub fn add_dependency_is_idempotent_test() {
+  in_temp_dir("add_dep", fn(dir) {
+    let project_dir = dir <> "/dep_app"
+    new.run(project_dir, ["--db", "sqlite"])
+
+    let assert Ok(cwd) = current_directory()
+    let assert Ok(_) = set_cwd(project_dir)
+
+    project.add_dependency("argus", ">= 2.0.0 and < 3.0.0") |> should.be_true
+    project.add_dependency("argus", ">= 2.0.0 and < 3.0.0") |> should.be_false
+    // Already a dependency of every generated project
+    project.add_dependency("wisp", ">= 1.0.0 and < 2.0.0") |> should.be_false
+
+    let assert Ok(toml) = simplifile.read("gleam.toml")
+    string.split(toml, "argus = ") |> list.length |> should.equal(2)
+    string.contains(toml, "wisp = \">= 1.0.0") |> should.be_false
+
+    // Added to [dependencies], not [dev-dependencies]
+    let assert Ok(#(deps, dev_deps)) =
+      string.split_once(toml, "[dev-dependencies]")
+    string.contains(deps, "argus = ") |> should.be_true
+    string.contains(dev_deps, "argus") |> should.be_false
+    // The database is still detected after the patch
+    project.detect_db() |> should.equal(types.Sqlite)
+
+    let assert Ok(_) = set_cwd(cwd)
+    Nil
+  })
+}
+
 pub fn gen_auth_without_db_generates_nothing_test() {
   in_temp_dir("gen_auth_nodb", fn(dir) {
     let project_dir = dir <> "/auth_nodb"
@@ -292,6 +354,7 @@ pub fn gen_auth_without_db_generates_nothing_test() {
     gen.auth()
 
     file_exists("src/auth_nodb/data/user_repo.gleam") |> should.be_false
+    file_contains("gleam.toml", "argus") |> should.be_false
     file_contains("src/auth_nodb/router.gleam", "auth_handler")
     |> should.be_false
 

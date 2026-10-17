@@ -37,6 +37,9 @@ This creates 9 files:
 | `web/middleware/auth.gleam` | Session middleware |
 | `test/.../auth_handler_test.gleam` | Password hashing tests |
 
+It also adds the `argus` package (Argon2 password hashing) to
+`gleam.toml`.
+
 And adds 5 routes to the router:
 
 ```
@@ -109,28 +112,52 @@ pub fn index(req: Request, ctx: Context) -> Response {
 
 ## Password hashing
 
-The generated `auth.gleam` uses `gleam_crypto` SHA-256 hashing. This
-is functional for development but **not production-grade**.
+The generated `domain/auth.gleam` hashes passwords with **Argon2id**,
+using the [`argus`](https://hex.pm/packages/argus) package. `gen auth`
+adds it to your `gleam.toml` (it leaves the file alone if `argus` is
+already there):
 
-For production, replace with a proper password hashing library:
-
-```bash
-gleam add beecrypt
+```toml
+[dependencies]
+argus = ">= 2.0.0 and < 3.0.0"
 ```
 
-Then update `domain/auth.gleam`:
-
 ```gleam
-import beecrypt
+import argus
+import gleam/result
 
-pub fn hash_password(password: String) -> String {
-  beecrypt.hash(password)
+pub fn hash_password(password: String) -> Result(String, Nil) {
+  argus.hasher()
+  |> argus.hash(password)
+  |> result.map(fn(output) { output.encoded_hash })
+  |> result.replace_error(Nil)
 }
 
 pub fn verify_password(password: String, hash: String) -> Bool {
-  beecrypt.verify(password, hash)
+  argus.verify(hash, password)
+  |> result.unwrap(False)
 }
 ```
+
+- Every hash gets a fresh random salt, so two users with the same
+  password get different hashes.
+- `argus.hasher()` uses OWASP's recommended Argon2id settings
+  (2 iterations, 19 MiB of memory, parallelism 1). Tune them with
+  `argus.time_cost`, `argus.memory_cost` and `argus.parallelism`.
+- The stored value is a self-describing string such as
+  `$argon2id$v=13$m=19456,t=2,p=1$<salt>$<hash>`. It carries the salt and the
+  parameters, so changing the settings later doesn't break old hashes.
+- `verify_password` compares in constant time and returns `False` for a
+  malformed hash.
+
+`hash_password` returns a `Result` because Argon2 can fail (for
+example if memory can't be allocated). The register handler turns that
+failure into the same "Could not create account" error as a database
+failure.
+
+Argus wraps the reference C implementation as a NIF, so building the
+project needs a C compiler (`build-essential` on Debian, `build-base`
+on Alpine). See [Deployment](deployment.md).
 
 ## Form validation
 

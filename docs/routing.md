@@ -10,7 +10,7 @@ the HTTP method.
 
 ```gleam
 pub fn handle_request(req: Request, ctx: Context) -> Response {
-  use req <- middleware(req)
+  use req <- middleware(req, ctx)
 
   case wisp.path_segments(req), req.method {
     [], http.Get -> home_handler.index(req, ctx)
@@ -102,25 +102,50 @@ Don't forget to add the import at the top of the file.
 Middleware runs before the route match. The default middleware stack:
 
 ```gleam
-fn middleware(req: Request, next: fn(Request) -> Response) -> Response {
+fn middleware(
+  req: Request,
+  ctx: Context,
+  next: fn(Request) -> Response,
+) -> Response {
   let req = wisp.method_override(req)     // PUT/DELETE via _method
   use <- wisp.log_request(req)            // log method + path
-  use <- wisp.rescue_crashes              // catch panics, return 500
+  use <- rescue_crashes(req, ctx)         // catch panics, return 500
   use <- wisp.serve_static(req,           // serve priv/static/*
     under: "/static",
     from: priv_static(),
   )
   next(req)
 }
+
+fn rescue_crashes(
+  req: Request,
+  ctx: Context,
+  next: fn() -> Response,
+) -> Response {
+  case ctx.config.env {
+    config.Dev -> dev_error.rescue(req, next)
+    config.Test | config.Prod -> wisp.rescue_crashes(next)
+  }
+}
 ```
+
+When `APP_ENV` is `dev` (the default, and what `refrakt dev` sets), a
+crash renders the detailed error page from `refrakt/dev_error`: the
+error, a stack trace and the request headers. With `APP_ENV=test` or
+`APP_ENV=prod` the crash is logged and the visitor gets a plain
+`500 Internal server error`, so internals never leak in production.
 
 Add custom middleware by inserting `use` calls:
 
 ```gleam
-fn middleware(req: Request, next: fn(Request) -> Response) -> Response {
+fn middleware(
+  req: Request,
+  ctx: Context,
+  next: fn(Request) -> Response,
+) -> Response {
   let req = wisp.method_override(req)
   use <- wisp.log_request(req)
-  use <- wisp.rescue_crashes
+  use <- rescue_crashes(req, ctx)
   use <- wisp.serve_static(req, under: "/static", from: priv_static())
   use <- my_custom_middleware(req)          // your middleware
   next(req)
