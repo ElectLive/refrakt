@@ -1,6 +1,6 @@
 /// Topic-based publish/subscribe for real-time messaging.
 ///
-/// Uses ETS for subscriber tracking and OTP processes for message dispatch.
+/// A single OTP actor tracks subscribers per topic and dispatches messages.
 ///
 /// ## Usage
 ///
