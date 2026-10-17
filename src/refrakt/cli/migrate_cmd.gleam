@@ -72,16 +72,14 @@ fn migrate_module_postgres(app: String) -> String {
 ///
 /// Usage: gleam run -m " <> app <> "/migrate
 ///
-import gleam/erlang/process
+import gleam/dynamic/decode
+import gleam/int
 import gleam/io
-import gleam/list
 import gleam/result
-import gleam/string
 import " <> app <> "/config
 import " <> app <> "/data/repo
 import pog
 import refrakt/migrate
-import simplifile
 
 pub fn main() {
   let cfg = config.load()
@@ -97,10 +95,7 @@ pub fn main() {
 
   let query_strings = fn(sql: String) -> Result(List(String), String) {
     pog.query(sql)
-    |> pog.returning(fn(row) {
-      use name <- gleam/dynamic/decode.field(0, gleam/dynamic/decode.string)
-      gleam/dynamic/decode.success(name)
-    })
+    |> pog.returning(name_decoder())
     |> pog.execute(db)
     |> result.map(fn(r) { r.rows })
     |> result.replace_error(\"query failed\")
@@ -108,23 +103,14 @@ pub fn main() {
 
   case migrate.run_from_directory(execute, query_strings, migrations_dir) {
     Ok(count) ->
-      io.println(
-        \"Done. \"
-        <> int_to_string(count)
-        <> \" migration(s) applied.\",
-      )
+      io.println(\"Done. \" <> int.to_string(count) <> \" migration(s) applied.\")
     Error(err) -> io.println(\"Error: \" <> err)
   }
 }
 
-fn int_to_string(n: Int) -> String {
-  case n {
-    0 -> \"0\"
-    1 -> \"1\"
-    2 -> \"2\"
-    3 -> \"3\"
-    _ -> \"several\"
-  }
+fn name_decoder() -> decode.Decoder(String) {
+  use name <- decode.field(0, decode.string)
+  decode.success(name)
 }
 "
 }
@@ -134,10 +120,10 @@ fn migrate_module_sqlite(app: String) -> String {
 ///
 /// Usage: gleam run -m " <> app <> "/migrate
 ///
+import gleam/dynamic/decode
+import gleam/int
 import gleam/io
-import gleam/list
 import gleam/result
-import gleam/string
 import " <> app <> "/config
 import " <> app <> "/data/repo
 import refrakt/migrate
@@ -156,32 +142,20 @@ pub fn main() {
   }
 
   let query_strings = fn(sql: String) -> Result(List(String), String) {
-    sqlight.query(sql, on: conn, with: [], expecting: fn(row) {
-      use name <- gleam/dynamic/decode.field(0, gleam/dynamic/decode.string)
-      gleam/dynamic/decode.success(name)
-    })
+    sqlight.query(sql, on: conn, with: [], expecting: name_decoder())
     |> result.replace_error(\"query failed\")
   }
 
   case migrate.run_from_directory(execute, query_strings, migrations_dir) {
     Ok(count) ->
-      io.println(
-        \"Done. \"
-        <> int_to_string(count)
-        <> \" migration(s) applied.\",
-      )
+      io.println(\"Done. \" <> int.to_string(count) <> \" migration(s) applied.\")
     Error(err) -> io.println(\"Error: \" <> err)
   }
 }
 
-fn int_to_string(n: Int) -> String {
-  case n {
-    0 -> \"0\"
-    1 -> \"1\"
-    2 -> \"2\"
-    3 -> \"3\"
-    _ -> \"several\"
-  }
+fn name_decoder() -> decode.Decoder(String) {
+  use name <- decode.field(0, decode.string)
+  decode.success(name)
 }
 "
 }
