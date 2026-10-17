@@ -4,15 +4,12 @@
 ///
 import gleam/io
 import gleam/string
-import refrakt/cli/project
 import simplifile
 
 @external(erlang, "refrakt_build_ffi", "run_cmd")
 fn run_cmd(cmd: String) -> String
 
 pub fn setup() {
-  let app = project.app_name()
-
   io.println("Setting up asset pipeline...")
   io.println("")
 
@@ -42,7 +39,6 @@ module.exports = {
 @tailwind components;
 @tailwind utilities;
 "
-      let _ = simplifile.write("assets/css/app.css", input_css)
       let _ = simplifile.create_directory_all("assets/css")
       let _ = simplifile.write("assets/css/app.css", input_css)
 
