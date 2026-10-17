@@ -6,6 +6,8 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-17
+
 ### Added
 
 - Library modules: `cors`, `jobs`, `mailer`, `paginate`, `pubsub`,
@@ -32,7 +34,7 @@ uses [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Generated projects require `mist >= 6.0`, `wisp >= 2.2.2`,
-  `lustre >= 5.7` and `refrakt >= 0.2`.
+  `lustre >= 5.7` and `refrakt >= 0.3`.
 - Library dependencies updated; `gleam_otp` and `gleam_crypto` are now
   direct dependencies, and the unused `glint` dependency was removed.
 - Development toolchain pinned to Gleam 1.19.
@@ -56,6 +58,7 @@ uses [Semantic Versioning](https://semver.org/).
 - Library helpers for validation, flash messages, migrations and testing.
 - Documentation, tutorial and examples.
 
-[Unreleased]: https://github.com/raskell-io/refrakt/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/raskell-io/refrakt/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/raskell-io/refrakt/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/raskell-io/refrakt/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/raskell-io/refrakt/releases/tag/v0.1.0

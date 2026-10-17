@@ -31,7 +31,7 @@ mist = \">= 6.0.0 and < 7.0.0\"
 wisp = \">= 2.2.2 and < 3.0.0\"
 lustre = \">= 5.7.0 and < 6.0.0\"
 gleam_json = \">= 3.1.0 and < 4.0.0\"
-refrakt = \">= 0.2.0 and < 1.0.0\"" <> db_dep <> "
+refrakt = \">= 0.3.0 and < 1.0.0\"" <> db_dep <> "
 
 [dev-dependencies]
 gleeunit = \">= 1.11.0 and < 2.0.0\"
