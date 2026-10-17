@@ -2108,8 +2108,6 @@ fn auth_migration(db: DbChoice) -> String {
   inserted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE UNIQUE INDEX users_email_index ON users (email);
 "
   }
 }
