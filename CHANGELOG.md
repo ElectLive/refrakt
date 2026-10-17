@@ -22,6 +22,12 @@ uses [Semantic Versioning](https://semver.org/).
 - `jobs` now enforces `max_concurrency` and survives crashing jobs.
 - `token.verify` accepts data that contains dots.
 - `upload` strips NUL bytes from filenames.
+- `gen auth` generates SQLite code in SQLite projects and refuses to run
+  without a database (#2).
+- `refrakt migrate` works in SQLite projects; the generated migration
+  module compiles again.
+- The generated Postgres users migration is a single statement, as pog
+  requires.
 
 ### Changed
 
