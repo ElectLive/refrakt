@@ -61,6 +61,9 @@ FROM ghcr.io/gleam-lang/gleam:v1.14.0-erlang-alpine
 WORKDIR /app
 COPY . .
 
+# Only needed after `refrakt gen auth`: argus builds an Argon2 NIF from C.
+RUN apk add --no-cache build-base
+
 RUN gleam export erlang-shipment
 
 CMD ["build/erlang-shipment/entrypoint.sh", "run"]

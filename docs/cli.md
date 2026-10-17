@@ -105,7 +105,8 @@ refrakt gen auth
 **Creates:** 9 files — user domain, user repo, auth handler, auth
 views, auth form, auth middleware, migration, tests.
 
-**Patches:** `router.gleam` with 5 auth routes.
+**Patches:** `router.gleam` with 5 auth routes, and `gleam.toml` with the
+`argus` dependency (Argon2 password hashing) if it isn't there yet.
 
 Works with PostgreSQL and SQLite projects; the repo and migration match
 the project's database. Requires a database (`--db postgres` or
