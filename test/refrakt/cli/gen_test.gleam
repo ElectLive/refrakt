@@ -235,6 +235,66 @@ pub fn gen_auth_creates_all_files_test() {
     file_contains("src/auth_app/router.gleam", "login") |> should.be_true
     file_contains("src/auth_app/router.gleam", "register") |> should.be_true
 
+    // Postgres-specific code
+    file_contains("src/auth_app/data/user_repo.gleam", "import pog")
+    |> should.be_true
+    file_contains("src/auth_app/web/auth_handler.gleam", "ctx.db,")
+    |> should.be_true
+    file_contains(
+      "src/auth_app/data/migrations/001_create_users.sql",
+      "SERIAL PRIMARY KEY",
+    )
+    |> should.be_true
+
+    let assert Ok(_) = set_cwd(cwd)
+    Nil
+  })
+}
+
+pub fn gen_auth_sqlite_generates_sqlite_code_test() {
+  in_temp_dir("gen_auth_sqlite", fn(dir) {
+    let project_dir = dir <> "/auth_lite"
+    new.run(project_dir, ["--db", "sqlite"])
+
+    let assert Ok(cwd) = current_directory()
+    let assert Ok(_) = set_cwd(project_dir)
+
+    gen.auth()
+
+    let repo = "src/auth_lite/data/user_repo.gleam"
+    file_contains(repo, "import sqlight") |> should.be_true
+    file_contains(repo, "pog") |> should.be_false
+    file_contains(repo, "db_path: String") |> should.be_true
+
+    file_contains("src/auth_lite/web/auth_handler.gleam", "ctx.db_path")
+    |> should.be_true
+    file_contains("src/auth_lite/web/middleware/auth.gleam", "ctx.db_path")
+    |> should.be_true
+
+    let migration = "src/auth_lite/data/migrations/001_create_users.sql"
+    file_contains(migration, "INTEGER PRIMARY KEY AUTOINCREMENT")
+    |> should.be_true
+    file_contains(migration, "TIMESTAMPTZ") |> should.be_false
+
+    let assert Ok(_) = set_cwd(cwd)
+    Nil
+  })
+}
+
+pub fn gen_auth_without_db_generates_nothing_test() {
+  in_temp_dir("gen_auth_nodb", fn(dir) {
+    let project_dir = dir <> "/auth_nodb"
+    new.run(project_dir, [])
+
+    let assert Ok(cwd) = current_directory()
+    let assert Ok(_) = set_cwd(project_dir)
+
+    gen.auth()
+
+    file_exists("src/auth_nodb/data/user_repo.gleam") |> should.be_false
+    file_contains("src/auth_nodb/router.gleam", "auth_handler")
+    |> should.be_false
+
     let assert Ok(_) = set_cwd(cwd)
     Nil
   })

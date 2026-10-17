@@ -1,7 +1,10 @@
 <div align="center">
 
 <h1 align="center">
-  Refrakt
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-wordmark-dark.svg">
+    <img alt="Refrakt" src="assets/logo-wordmark.svg" width="320">
+  </picture>
 </h1>
 
 <p align="center">
@@ -14,13 +17,13 @@
     <img alt="Gleam" src="https://img.shields.io/badge/Gleam-1.14+-ffaff3?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiLz48L3N2Zz4=&style=for-the-badge" />
   </a>
   <a href="https://hex.pm/packages/refrakt">
-    <img alt="Hex" src="https://img.shields.io/badge/Hex-v0.2.0-8b5cf6?style=for-the-badge" />
+    <img alt="Hex" src="https://img.shields.io/hexpm/v/refrakt?style=for-the-badge&color=8b5cf6" />
   </a>
   <a href="LICENSE">
     <img alt="License" src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" />
   </a>
-  <a href="https://github.com/raskell-io/refrakt/actions">
-    <img alt="CI" src="https://img.shields.io/badge/CI-passing-22c55e?style=for-the-badge" />
+  <a href="https://github.com/raskell-io/refrakt/actions/workflows/ci.yml">
+    <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/raskell-io/refrakt/ci.yml?branch=main&style=for-the-badge&label=CI" />
   </a>
 </p>
 

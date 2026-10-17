@@ -24,9 +24,8 @@
 ///
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
-import gleam/int
-import gleam/list
 import gleam/otp/actor
+import gleam/result
 import wisp.{type Request, type Response}
 
 /// A running telemetry collector.
@@ -59,31 +58,38 @@ type State {
 
 /// Start the telemetry collector.
 pub fn start() -> Result(Metrics, actor.StartError) {
-  actor.start(
-    State(
-      total_requests: 0,
-      total_errors: 0,
-      status_counts: dict.new(),
-      total_duration_ms: 0,
-    ),
-    handle_message,
-  )
+  actor.new(State(
+    total_requests: 0,
+    total_errors: 0,
+    status_counts: dict.new(),
+    total_duration_ms: 0,
+  ))
+  |> actor.on_message(handle_message)
+  |> actor.start
+  |> result.map(fn(started) { started.data })
 }
 
 /// Middleware that tracks request duration and status.
-pub fn track(req: Request, metrics: Metrics, next: fn() -> Response) -> Response {
+pub fn track(
+  _req: Request,
+  metrics: Metrics,
+  next: fn() -> Response,
+) -> Response {
   let start = system_time_ms()
   let resp = next()
   let duration = system_time_ms() - start
 
-  actor.send(metrics, RecordRequest(status: resp.status, duration_ms: duration))
+  process.send(
+    metrics,
+    RecordRequest(status: resp.status, duration_ms: duration),
+  )
   resp
 }
 
 /// Get current metrics statistics.
 pub fn get_stats(metrics: Metrics) -> Stats {
   let reply = process.new_subject()
-  actor.send(metrics, GetStats(reply:))
+  process.send(metrics, GetStats(reply:))
   case process.receive(reply, 5000) {
     Ok(stats) -> stats
     Error(_) ->
@@ -97,9 +103,9 @@ pub fn get_stats(metrics: Metrics) -> Stats {
 }
 
 fn handle_message(
-  msg: MetricsMessage,
   state: State,
-) -> actor.Next(MetricsMessage, State) {
+  msg: MetricsMessage,
+) -> actor.Next(State, MetricsMessage) {
   case msg {
     RecordRequest(status:, duration_ms:) -> {
       let is_error = status >= 500

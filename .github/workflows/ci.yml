@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27"
-          gleam-version: "1.14"
+          gleam-version: "1.19"
           rebar3-version: "3"
 
       - name: Check formatting

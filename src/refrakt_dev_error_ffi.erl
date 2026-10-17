@@ -1,24 +1,14 @@
 -module(refrakt_dev_error_ffi).
 -export([format_stacktrace/1]).
 
-format_stacktrace(Exception) ->
-    %% Extract the stacktrace from the exception
-    %% Gleam's exception type wraps Erlang errors
-    Trace = try
-        erlang:get_stacktrace()
-    catch
-        _:_ -> []
+format_stacktrace(_Exception) ->
+    %% Gleam's exception.rescue does not expose the original stacktrace,
+    %% so report the current process stacktrace instead.
+    Trace = case erlang:process_info(self(), current_stacktrace) of
+        {current_stacktrace, ST} -> ST;
+        _ -> []
     end,
-    %% Also try to get the trace from the process dictionary
-    Trace2 = case Trace of
-        [] ->
-            case erlang:process_info(self(), current_stacktrace) of
-                {current_stacktrace, ST} -> ST;
-                _ -> []
-            end;
-        _ -> Trace
-    end,
-    format_frames(Trace2, []).
+    format_frames(Trace, []).
 
 format_frames([], Acc) ->
     list_to_binary(lists:reverse(Acc));

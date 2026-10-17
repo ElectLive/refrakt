@@ -107,6 +107,10 @@ views, auth form, auth middleware, migration, tests.
 
 **Patches:** `router.gleam` with 5 auth routes.
 
+Works with PostgreSQL and SQLite projects; the repo and migration match
+the project's database. Requires a database (`--db postgres` or
+`--db sqlite`).
+
 See [Authentication](authentication.md) for details.
 
 ---

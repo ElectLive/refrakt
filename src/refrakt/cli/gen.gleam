@@ -248,6 +248,18 @@ pub fn migration(name: String) {
 // =============================================================================
 
 pub fn auth() {
+  case project.detect_db() {
+    NoDb -> {
+      io.println("No database configured.")
+      io.println(
+        "gen auth stores users in a database. Create a project with --db postgres or --db sqlite.",
+      )
+    }
+    db -> auth_with_db(db)
+  }
+}
+
+fn auth_with_db(db: DbChoice) {
   let app = project.app_name()
 
   // Ensure directories
@@ -268,19 +280,19 @@ pub fn auth() {
   let files = [
     #("src/" <> app <> "/domain/user.gleam", auth_user_type()),
     #("src/" <> app <> "/domain/auth.gleam", auth_domain(app)),
-    #("src/" <> app <> "/data/user_repo.gleam", auth_user_repo(app)),
+    #("src/" <> app <> "/data/user_repo.gleam", auth_user_repo(app, db)),
     #(
       "src/"
         <> app
         <> "/data/migrations/"
         <> next_migration_number(app)
         <> "_create_users.sql",
-      auth_migration(),
+      auth_migration(db),
     ),
     #("src/" <> app <> "/web/forms/auth_form.gleam", auth_form(app)),
-    #("src/" <> app <> "/web/auth_handler.gleam", auth_handler(app)),
+    #("src/" <> app <> "/web/auth_handler.gleam", auth_handler(app, db)),
     #("src/" <> app <> "/web/auth_views.gleam", auth_views(app)),
-    #("src/" <> app <> "/web/middleware/auth.gleam", auth_middleware(app)),
+    #("src/" <> app <> "/web/middleware/auth.gleam", auth_middleware(app, db)),
     #("test/" <> app <> "/web/auth_handler_test.gleam", auth_test(app)),
   ]
 
@@ -1926,7 +1938,93 @@ pub fn verify_password(password: String, hash: String) -> Bool {
 "
 }
 
-fn auth_user_repo(app: String) -> String {
+/// The expression a generated handler uses to reach the database.
+fn auth_db_arg(db: DbChoice) -> String {
+  case db {
+    Sqlite -> "ctx.db_path"
+    _ -> "ctx.db"
+  }
+}
+
+fn auth_user_repo(app: String, db: DbChoice) -> String {
+  case db {
+    Sqlite -> auth_user_repo_sqlite(app)
+    _ -> auth_user_repo_pog(app)
+  }
+}
+
+fn auth_user_repo_sqlite(app: String) -> String {
+  let q = "\""
+  "import gleam/dynamic/decode
+import gleam/result
+import " <> app <> "/domain/user.{type User, User}
+import sqlight
+
+fn user_decoder() -> decode.Decoder(User) {
+  use id <- decode.field(0, decode.int)
+  use email <- decode.field(1, decode.string)
+  use hashed_password <- decode.field(2, decode.string)
+  decode.success(User(id: id, email: email, hashed_password: hashed_password))
+}
+
+pub fn get_by_email(db_path: String, email: String) -> Result(User, Nil) {
+  use conn <- sqlight.with_connection(db_path)
+  sqlight.query(
+    " <> q <> "SELECT id, email, hashed_password FROM users WHERE email = ?" <> q <> ",
+    on: conn,
+    with: [sqlight.text(email)],
+    expecting: user_decoder(),
+  )
+  |> result.replace_error(Nil)
+  |> result.try(fn(rows) {
+    case rows {
+      [user] -> Ok(user)
+      _ -> Error(Nil)
+    }
+  })
+}
+
+pub fn get_by_id(db_path: String, id: Int) -> Result(User, Nil) {
+  use conn <- sqlight.with_connection(db_path)
+  sqlight.query(
+    " <> q <> "SELECT id, email, hashed_password FROM users WHERE id = ?" <> q <> ",
+    on: conn,
+    with: [sqlight.int(id)],
+    expecting: user_decoder(),
+  )
+  |> result.replace_error(Nil)
+  |> result.try(fn(rows) {
+    case rows {
+      [user] -> Ok(user)
+      _ -> Error(Nil)
+    }
+  })
+}
+
+pub fn create(
+  db_path: String,
+  email: String,
+  hashed_password: String,
+) -> Result(User, Nil) {
+  use conn <- sqlight.with_connection(db_path)
+  sqlight.query(
+    " <> q <> "INSERT INTO users (email, hashed_password) VALUES (?, ?) RETURNING id, email, hashed_password" <> q <> ",
+    on: conn,
+    with: [sqlight.text(email), sqlight.text(hashed_password)],
+    expecting: user_decoder(),
+  )
+  |> result.replace_error(Nil)
+  |> result.try(fn(rows) {
+    case rows {
+      [user] -> Ok(user)
+      _ -> Error(Nil)
+    }
+  })
+}
+"
+}
+
+fn auth_user_repo_pog(app: String) -> String {
   let q = "\""
   "import gleam/dynamic/decode
 import gleam/result
@@ -1991,17 +2089,27 @@ pub fn create(
 "
 }
 
-fn auth_migration() -> String {
-  "CREATE TABLE users (
+fn auth_migration(db: DbChoice) -> String {
+  case db {
+    Sqlite ->
+      "CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  hashed_password TEXT NOT NULL,
+  inserted_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+"
+    _ ->
+      "CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   hashed_password TEXT NOT NULL,
   inserted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE UNIQUE INDEX users_email_index ON users (email);
 "
+  }
 }
 
 fn auth_form(_app: String) -> String {
@@ -2079,13 +2187,13 @@ fn get_value(data: wisp.FormData, key: String) -> String {
 "
 }
 
-fn auth_handler(app: String) -> String {
+fn auth_handler(app: String, db: DbChoice) -> String {
+  let db_arg = auth_db_arg(db)
   "import gleam/int
 import " <> app <> "/context.{type Context}
 import " <> app <> "/data/user_repo
 import " <> app <> "/domain/auth
 import " <> app <> "/web/auth_views
-import " <> app <> "/web/error_handler
 import " <> app <> "/web/forms/auth_form
 import " <> app <> "/web/layouts/root_layout
 import refrakt/flash
@@ -2107,7 +2215,7 @@ pub fn login(req: Request, ctx: Context) -> Response {
       |> wisp.html_response(422)
 
     Ok(params) ->
-      case user_repo.get_by_email(ctx.db, params.email) {
+      case user_repo.get_by_email(" <> db_arg <> ", params.email) {
         Error(_) ->
           auth_views.login_view(params.email, [#(\"email\", \"Invalid email or password\")])
           |> root_layout.wrap(\"Log In\")
@@ -2152,7 +2260,7 @@ pub fn register(req: Request, ctx: Context) -> Response {
 
     Ok(params) -> {
       let hashed = auth.hash_password(params.password)
-      case user_repo.create(ctx.db, params.email, hashed) {
+      case user_repo.create(" <> db_arg <> ", params.email, hashed) {
         Ok(user) ->
           wisp.redirect(\"/\")
           |> wisp.set_cookie(
@@ -2252,7 +2360,8 @@ fn field_error(errors: List(#(String, String)), field: String) -> Element(Nil) {
 "
 }
 
-fn auth_middleware(app: String) -> String {
+fn auth_middleware(app: String, db: DbChoice) -> String {
+  let db_arg = auth_db_arg(db)
   "import gleam/int
 import gleam/result
 import " <> app <> "/context.{type Context}
@@ -2267,7 +2376,7 @@ pub fn get_current_user(req: Request, ctx: Context) -> Result(User, Nil) {
     int.parse(user_id_str)
     |> result.replace_error(Nil),
   )
-  user_repo.get_by_id(ctx.db, user_id)
+  user_repo.get_by_id(" <> db_arg <> ", user_id)
 }
 
 /// Middleware that requires authentication.

@@ -63,7 +63,11 @@ pub fn create(db_path: String, params: TaskParams) -> Result(Task, Nil) {
   })
 }
 
-pub fn update(db_path: String, id: Int, params: TaskParams) -> Result(Task, Nil) {
+pub fn update(
+  db_path: String,
+  id: Int,
+  params: TaskParams,
+) -> Result(Task, Nil) {
   use conn <- sqlight.with_connection(db_path)
   sqlight.query(
     "UPDATE tasks SET title = ?, completed = ? WHERE id = ? RETURNING id, title, completed",

@@ -20,7 +20,7 @@
 import gleam/bit_array
 import gleam/crypto
 import gleam/int
-import gleam/result
+import gleam/list
 import gleam/string
 
 /// Token verification errors.
@@ -36,7 +36,7 @@ pub fn sign(
   secret: String,
   purpose: String,
   data: String,
-  max_age_seconds max_age: Int,
+  max_age_seconds _max_age: Int,
 ) -> String {
   let timestamp = system_time_seconds()
   let payload = purpose <> "." <> data <> "." <> int.to_string(timestamp)
@@ -52,8 +52,10 @@ pub fn verify(
   token: String,
   max_age_seconds max_age: Int,
 ) -> Result(String, TokenError) {
-  case string.split(token, ".") {
-    [token_purpose, data, timestamp_str, signature] -> {
+  // Split from the right so `data` itself may contain dots.
+  case list.reverse(string.split(token, ".")) {
+    [signature, timestamp_str, ..rest] if rest != [] -> {
+      let #(token_purpose, data) = split_purpose(list.reverse(rest), purpose)
       // Check purpose
       case token_purpose == purpose {
         False -> Error(Invalid)
@@ -86,6 +88,20 @@ pub fn verify(
       }
     }
     _ -> Error(BadFormat)
+  }
+}
+
+/// Separate the purpose prefix from the data. The expected purpose is
+/// used so a purpose containing dots still matches.
+fn split_purpose(parts: List(String), purpose: String) -> #(String, String) {
+  let joined = string.join(parts, ".")
+  case string.starts_with(joined, purpose <> ".") {
+    True -> #(purpose, string.drop_start(joined, string.length(purpose) + 1))
+    False ->
+      case parts {
+        [first, ..rest] -> #(first, string.join(rest, "."))
+        [] -> #("", "")
+      }
   }
 }
 

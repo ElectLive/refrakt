@@ -50,7 +50,7 @@ pub fn start() -> Result(RateLimiter, actor.StartError) {
   actor.new(State(entries: dict.new()))
   |> actor.on_message(handle_message)
   |> actor.start
-  |> result.map(fn(started) { started.subject })
+  |> result.map(fn(started) { started.data })
 }
 
 /// Check if a request is within the rate limit.
@@ -60,11 +60,11 @@ pub fn check(
   limiter: RateLimiter,
   max max: Int,
   window_ms window_ms: Int,
-  next: fn() -> Response,
+  next next: fn() -> Response,
 ) -> Response {
   let key = get_client_ip(req)
   let reply = process.new_subject()
-  actor.send(limiter, Check(key:, max:, window_ms:, reply:))
+  process.send(limiter, Check(key:, max:, window_ms:, reply:))
 
   case process.receive(reply, 5000) {
     Ok(True) -> next()
@@ -76,9 +76,9 @@ pub fn check(
 }
 
 fn handle_message(
-  msg: RateLimitMessage,
   state: State,
-) -> actor.Next(RateLimitMessage, State) {
+  msg: RateLimitMessage,
+) -> actor.Next(State, RateLimitMessage) {
   case msg {
     Check(key:, max:, window_ms:, reply:) -> {
       let now = erlang_system_time_ms()

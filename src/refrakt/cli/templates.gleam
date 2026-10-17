@@ -13,7 +13,7 @@ import refrakt/cli/types.{type DbChoice, NoDb, Postgres, Sqlite}
 pub fn gleam_toml(name: String, db: DbChoice) -> String {
   let db_dep = case db {
     Postgres -> "\npog = \">= 4.1.0 and < 5.0.0\""
-    Sqlite -> "\nsqlight = \">= 1.0.0 and < 2.0.0\""
+    Sqlite -> "\nsqlight = \">= 1.2.0 and < 2.0.0\""
     NoDb -> ""
   }
 
@@ -23,18 +23,18 @@ target = \"erlang\"
 gleam = \">= 1.14.0\"
 
 [dependencies]
-gleam_stdlib = \">= 0.44.0 and < 2.0.0\"
-gleam_erlang = \">= 0.34.0 and < 2.0.0\"
-gleam_http = \">= 4.3.0 and < 5.0.0\"
-envoy = \">= 1.1.0 and < 2.0.0\"
-mist = \">= 5.0.0 and < 6.0.0\"
-wisp = \">= 2.2.0 and < 3.0.0\"
-lustre = \">= 5.6.0 and < 6.0.0\"
+gleam_stdlib = \">= 0.70.0 and < 2.0.0\"
+gleam_erlang = \">= 1.3.0 and < 2.0.0\"
+gleam_http = \">= 4.5.0 and < 5.0.0\"
+envoy = \">= 1.2.0 and < 2.0.0\"
+mist = \">= 6.0.0 and < 7.0.0\"
+wisp = \">= 2.2.2 and < 3.0.0\"
+lustre = \">= 5.7.0 and < 6.0.0\"
 gleam_json = \">= 3.1.0 and < 4.0.0\"
-refrakt = \">= 0.1.0 and < 1.0.0\"" <> db_dep <> "
+refrakt = \">= 0.2.0 and < 1.0.0\"" <> db_dep <> "
 
 [dev-dependencies]
-gleeunit = \">= 1.0.0 and < 2.0.0\"
+gleeunit = \">= 1.11.0 and < 2.0.0\"
 "
 }
 

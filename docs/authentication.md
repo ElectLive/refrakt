@@ -11,6 +11,18 @@ modify everything.
 refrakt gen auth
 ```
 
+Auth works with both databases. The generator reads `gleam.toml` and
+produces code for whichever one your project uses:
+
+- **PostgreSQL** (`--db postgres`) — the repo uses `pog` and takes
+  `ctx.db`; the migration uses `SERIAL` and `TIMESTAMPTZ`.
+- **SQLite** (`--db sqlite`) — the repo uses `sqlight` and takes
+  `ctx.db_path`; the migration uses `INTEGER PRIMARY KEY AUTOINCREMENT`
+  and `TEXT` timestamps.
+
+A project created without `--db` has nowhere to store users, so
+`gen auth` prints an error and generates nothing.
+
 This creates 9 files:
 
 | File | Purpose |
@@ -36,6 +48,12 @@ POST    /logout             Log out
 ```
 
 ## Run the migration
+
+```bash
+refrakt migrate
+```
+
+Or apply the SQL by hand.
 
 PostgreSQL:
 ```bash

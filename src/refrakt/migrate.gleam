@@ -39,7 +39,7 @@ pub fn run_from_directory(
   use _ <- result.try(db_execute(
     "CREATE TABLE IF NOT EXISTS _migrations (
       name TEXT PRIMARY KEY,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )",
   ))
 
