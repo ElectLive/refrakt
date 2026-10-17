@@ -24,7 +24,9 @@ pub fn run() {
   }
 }
 
-fn extract_routes(content: String) -> List(String) {
+/// Extract the route table from the source of a `router.gleam` file, one
+/// formatted line (method, path, handler) per route.
+pub fn extract_routes(content: String) -> List(String) {
   content
   |> string.split("\n")
   |> list.filter_map(fn(line) {
@@ -79,33 +81,28 @@ fn extract_method(pattern: String) -> String {
 }
 
 fn extract_path(pattern: String) -> String {
-  // Parse the list pattern to build the path
-  case string.split_once(pattern, "],") {
-    Error(_) -> "/"
-    Ok(#(list_part, _)) -> {
-      let trimmed = string.trim(list_part)
-      case trimmed {
-        "[]" -> "/"
-        _ -> {
-          // Remove leading [ and parse segments
-          let inner =
-            trimmed
-            |> string.drop_start(1)
-          let segments =
-            inner
-            |> string.split(",")
-            |> list.map(fn(s) {
-              let s = string.trim(s)
-              case string.starts_with(s, "\"") {
-                True ->
-                  s
-                  |> string.replace("\"", "")
-                False -> ":" <> s
-              }
-            })
-          "/" <> string.join(segments, "/")
-        }
-      }
+  // The list pattern is everything up to the first `]`, e.g. `["posts", id`
+  // for `["posts", id], http.Get` or just `[` for the root route `[]`.
+  let inner = case string.split_once(pattern, "]") {
+    Ok(#(list_part, _)) -> list_part |> string.trim |> string.drop_start(1)
+    Error(_) -> ""
+  }
+
+  case string.trim(inner) {
+    "" -> "/"
+    inner -> {
+      let segments =
+        inner
+        |> string.split(",")
+        |> list.map(fn(segment) {
+          let segment = string.trim(segment)
+          case segment {
+            "\"" <> _ -> string.replace(segment, "\"", "")
+            ".." <> rest -> "*" <> rest
+            _ -> ":" <> segment
+          }
+        })
+      "/" <> string.join(segments, "/")
     }
   }
 }
