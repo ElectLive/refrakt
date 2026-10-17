@@ -33,7 +33,7 @@ pub fn main() {
     ["dev", ..] -> dev.run()
     ["help", ..] | ["--help", ..] | ["-h", ..] -> print_help()
     ["version", ..] | ["--version", ..] | ["-v", ..] ->
-      io.println("refrakt 0.2.0")
+      io.println("refrakt 0.3.0")
     [cmd, ..] -> {
       io.println("Unknown command: " <> cmd)
       io.println("")
