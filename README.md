@@ -17,7 +17,7 @@
     <img alt="Gleam" src="https://img.shields.io/badge/Gleam-1.14+-ffaff3?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiLz48L3N2Zz4=&style=for-the-badge" />
   </a>
   <a href="https://hex.pm/packages/refrakt">
-    <img alt="Hex" src="https://img.shields.io/hexpm/v/refrakt?style=for-the-badge&color=8b5cf6" />
+    <img alt="Hex" src="https://img.shields.io/hexpm/v/refrakt?style=for-the-badge&color=3f7cff" />
   </a>
   <a href="LICENSE">
     <img alt="License" src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" />
@@ -28,10 +28,11 @@
 </p>
 
 <p align="center">
+  <a href="https://refrakt.raskell.io">Website</a> ·
   <a href="docs/tutorial.md">Tutorial</a> ·
   <a href="docs/README.md">Documentation</a> ·
   <a href="docs/cli.md">CLI Reference</a> ·
-  <a href="https://hex.pm/packages/refrakt">Hex Package</a> ·
+  <a href="https://hexdocs.pm/refrakt">API Docs</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
@@ -130,13 +131,16 @@ Plain Gleam pattern matching. No DSL, no macros. A new developer reads this file
 | `refrakt new <name>` | Create a new project (`--db postgres`, `--db sqlite`) |
 | `refrakt gen resource <name> <fields>` | Full CRUD — handler, views, form, domain, repo, migration, tests |
 | `refrakt gen resource <name> <fields> --api` | JSON API — handler, domain, repo, migration (no views) |
+| `refrakt gen resource <name> <fields> --belongs-to <parent>` | Add a foreign key to a parent resource |
 | `refrakt gen page <name>` | Static page — handler + route |
 | `refrakt gen auth` | Authentication — login, register, logout, sessions, middleware |
 | `refrakt gen island <name>` | Lustre interactive island (client-side) |
 | `refrakt gen live <name>` | Lustre server component (real-time over WebSocket) |
 | `refrakt gen migration <name>` | SQL migration file |
 | `refrakt migrate` | Run pending migrations |
+| `refrakt seed` | Run database seeds |
 | `refrakt build` | Compile Lustre islands to JavaScript |
+| `refrakt assets setup` / `assets build` | Set up and build Tailwind CSS assets |
 | `refrakt dev` | Dev server with file watching (auto-rebuild) |
 | `refrakt routes` | Print the route table |
 
@@ -166,11 +170,16 @@ Plain Gleam pattern matching. No DSL, no macros. A new developer reads this file
 - [x] Validation helpers (required, min/max length, inclusion, format)
 - [x] Flash messages (signed cookies)
 - [x] Test helpers (request builders)
+- [x] Background jobs with a concurrency limit (`refrakt/jobs`)
+- [x] Signed, expiring tokens for email verification and password resets (`refrakt/token`)
+- [x] Mailer with pluggable adapters (`refrakt/mailer`)
+- [x] Pagination, file uploads, CORS and rate-limiting middleware
+- [x] Topic-based pub/sub and basic request telemetry
 - [x] Dev error page (dark theme, error details, stack trace, request info)
 - [x] Dev file watcher (auto-rebuild on `src/` changes via fswatch)
 - [x] Auto-format all generated code
 - [x] Route table printer
-- [x] 21 tests (12 unit + 9 integration)
+- [x] 33 tests (22 unit + 11 generator integration)
 - [x] 17 documentation files
 - [x] 2 example apps (blog + tasks)
 
@@ -224,6 +233,31 @@ See [`examples/tasks_app/`](examples/tasks_app/) for the complete app.
 
 <br>
 
+## Library
+
+Generated apps depend on the small `refrakt` library. Everything else is plain Wisp, Lustre and Mist.
+
+| Module | What it does |
+|--------|--------------|
+| `refrakt/validate` | Composable validators that return `List(#(String, String))` errors |
+| `refrakt/flash` | Flash messages on signed cookies |
+| `refrakt/migrate` | Runs SQL migration files and tracks them in a `_migrations` table |
+| `refrakt/testing` | Request builders for handler tests |
+| `refrakt/dev_error` | Development error page |
+| `refrakt/jobs` | Background jobs in OTP processes, with a concurrency limit |
+| `refrakt/token` | Signed, expiring tokens bound to a purpose |
+| `refrakt/mailer` | Email builder with pluggable delivery adapters |
+| `refrakt/paginate` | Pagination helpers for list views |
+| `refrakt/upload` | Multipart file upload handling |
+| `refrakt/cors` | CORS middleware |
+| `refrakt/rate_limit` | Sliding-window rate-limiting middleware |
+| `refrakt/pubsub` | Topic-based publish/subscribe |
+| `refrakt/telemetry` | Request counts, response times and error rates |
+
+API docs: [hexdocs.pm/refrakt](https://hexdocs.pm/refrakt).
+
+<br>
+
 ## Built On
 
 | Package | Role |
@@ -243,11 +277,11 @@ git clone https://github.com/raskell-io/refrakt.git
 cd refrakt
 
 # Install toolchain
-mise install   # Gleam 1.14, Erlang 27, rebar3
+mise install   # Gleam 1.19, Erlang 27, rebar3
 
 # Build and test
 gleam build
-gleam test     # 21 tests
+gleam test     # 33 tests
 ```
 
 <br>

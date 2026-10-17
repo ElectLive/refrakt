@@ -1,6 +1,6 @@
 /// Rate limiting middleware using a sliding window counter.
 ///
-/// Uses an ETS table for fast concurrent access.
+/// A single OTP actor keeps the request timestamps per client.
 ///
 /// ## Usage
 ///
